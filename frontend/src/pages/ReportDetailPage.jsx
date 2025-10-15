@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./ReportDetailPage.css";
+import { useAuth } from "@clerk/clerk-react";
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 function ReportDetailPage() {
@@ -10,6 +11,7 @@ function ReportDetailPage() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { getToken } = useAuth();
 
   useEffect(() => {
     fetchReport();
@@ -17,7 +19,10 @@ function ReportDetailPage() {
 
   const fetchReport = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/reports/${id}`);
+      const token = await getToken();
+      const response = await axios.get(`${API_BASE}/api/reports/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setReport(response.data.data);
       setLoading(false);
     } catch (err) {
@@ -57,8 +62,6 @@ function ReportDetailPage() {
         </button>
         <h1>Credit Report Details</h1>
       </div>
-
-      {/* Basic Details Section */}
       <section className="report-section">
         <h2 className="section-title">
           <span className="section-icon">👤</span>
@@ -94,7 +97,7 @@ function ReportDetailPage() {
         </div>
       </section>
 
-      {/* Report Summary Section */}
+
       <section className="report-section">
         <h2 className="section-title">
           <span className="section-icon">📊</span>
@@ -146,7 +149,7 @@ function ReportDetailPage() {
         </div>
       </section>
 
-      {/* Credit Accounts Section */}
+
       <section className="report-section">
         <h2 className="section-title">
           <span className="section-icon">💳</span>
@@ -210,7 +213,7 @@ function ReportDetailPage() {
         )}
       </section>
 
-      {/* Addresses Section */}
+
       {addresses && addresses.length > 0 && (
         <section className="report-section">
           <h2 className="section-title">

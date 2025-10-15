@@ -1,4 +1,4 @@
-/* Page Container */
+
 .report-detail-page {
   max-width: 1200px;
   margin: 0 auto;
@@ -7,7 +7,7 @@
   color: #fff;
 }
 
-/* Header */
+
 .report-header {
   display: flex;
   align-items: center;
@@ -38,7 +38,7 @@
   text-align: left;
 }
 
-/* Report Section */
+
 .report-section {
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(10px);
@@ -49,7 +49,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Section Title */
+
 .section-title {
   display: flex;
   align-items: center;
@@ -65,7 +65,7 @@
   opacity: 0.7;
 }
 
-/* Basic Details Grid */
+
 .details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -107,7 +107,7 @@
   background: rgba(102, 126, 234, 0.1);
 }
 
-/* Credit Score */
+
 .score {
   font-size: 1.8rem;
   font-weight: 700;
@@ -117,7 +117,7 @@
 .score.good { color: #f59e0b; }
 .score.fair { color: #ef4444; }
 
-/* Summary Grid */
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -155,7 +155,7 @@
   color: #aaa;
 }
 
-/* Credit Accounts */
+
 .accounts-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -221,7 +221,7 @@
   font-weight: 700;
 }
 
-/* Addresses */
+
 .addresses-list {
   display: grid;
   gap: 0.5rem;
@@ -242,7 +242,7 @@
   color: #667eea;
 }
 
-/* Responsive */
+
 @media (max-width: 768px) {
   .report-header h1 {
     font-size: 1.5rem;

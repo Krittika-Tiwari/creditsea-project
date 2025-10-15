@@ -13,6 +13,15 @@ jest.mock("react-router-dom", () => ({
   useNavigate: () => mockNavigate,
 }));
 
+
+jest.mock("@clerk/clerk-react", () => ({
+  useAuth: () => ({
+    getToken: jest.fn(() => Promise.resolve("mock-token")),
+    isSignedIn: true,
+    userId: "user_test123",
+  }),
+}));
+
 const renderWithRouter = (component) => {
   return render(<BrowserRouter>{component}</BrowserRouter>);
 };
@@ -90,6 +99,34 @@ describe("UploadPage Component Tests", () => {
       const submitButton = screen.getByText("Upload & Process");
       expect(submitButton).not.toBeDisabled();
     });
+
+    test("clears error when valid file is selected after invalid file", () => {
+      renderWithRouter(<UploadPage />);
+
+      const input = screen.getByLabelText(/Drag & Drop XML file here/i, {
+        selector: "input",
+      });
+
+
+      const invalidFile = new File(["test"], "test.txt", {
+        type: "text/plain",
+      });
+      fireEvent.change(input, { target: { files: [invalidFile] } });
+      expect(
+        screen.getByText(/Please select a valid XML file/i)
+      ).toBeInTheDocument();
+
+
+      const validFile = new File(["<xml>test</xml>"], "test.xml", {
+        type: "text/xml",
+      });
+      fireEvent.change(input, { target: { files: [validFile] } });
+
+      expect(
+        screen.queryByText(/Please select a valid XML file/i)
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("test.xml")).toBeInTheDocument();
+    });
   });
 
   describe("File Removal", () => {
@@ -133,6 +170,43 @@ describe("UploadPage Component Tests", () => {
     });
   });
 
+  describe("Drag and Drop", () => {
+    test("handles valid XML file drop", () => {
+      renderWithRouter(<UploadPage />);
+
+      const file = new File(["<xml>test</xml>"], "dropped.xml", {
+        type: "text/xml",
+      });
+      const dropZone = document.querySelector(".drop-zone");
+
+      fireEvent.dragOver(dropZone);
+      fireEvent.drop(dropZone, {
+        dataTransfer: {
+          files: [file],
+        },
+      });
+
+      expect(screen.getByText("dropped.xml")).toBeInTheDocument();
+    });
+
+    test("shows error for invalid file drop", () => {
+      renderWithRouter(<UploadPage />);
+
+      const file = new File(["test"], "test.txt", { type: "text/plain" });
+      const dropZone = document.querySelector(".drop-zone");
+
+      fireEvent.drop(dropZone, {
+        dataTransfer: {
+          files: [file],
+        },
+      });
+
+      expect(
+        screen.getByText(/Please drop a valid XML file/i)
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("File Upload", () => {
     test("submits file successfully and shows success message", async () => {
       const mockResponse = {
@@ -164,9 +238,10 @@ describe("UploadPage Component Tests", () => {
           expect.stringMatching(/\/api\/upload$/),
           expect.any(FormData),
           expect.objectContaining({
-            headers: {
+            headers: expect.objectContaining({
               "Content-Type": "multipart/form-data",
-            },
+              Authorization: "Bearer mock-token",
+            }),
           })
         );
       });
@@ -269,6 +344,43 @@ describe("UploadPage Component Tests", () => {
         { timeout: 3000 }
       );
     });
+
+    test("clears file after successful upload", async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          reportId: "123",
+        },
+      };
+
+      axios.post.mockResolvedValue(mockResponse);
+
+      renderWithRouter(<UploadPage />);
+
+      const file = new File(["<xml>test</xml>"], "test.xml", {
+        type: "text/xml",
+      });
+      const input = screen.getByLabelText(/Drag & Drop XML file here/i, {
+        selector: "input",
+      });
+
+      fireEvent.change(input, { target: { files: [file] } });
+      expect(screen.getByText("test.xml")).toBeInTheDocument();
+
+      const submitButton = screen.getByText("Upload & Process");
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/File uploaded successfully/i)
+        ).toBeInTheDocument();
+      });
+
+
+      await waitFor(() => {
+        expect(screen.queryByText("test.xml")).not.toBeInTheDocument();
+      });
+    });
   });
 
   describe("Error Handling", () => {
@@ -294,31 +406,56 @@ describe("UploadPage Component Tests", () => {
       });
     });
 
-    test("clears error message when new file is selected", () => {
+    test("button stays disabled when no file selected", () => {
       renderWithRouter(<UploadPage />);
 
-      // Trigger error
-      const invalidFile = new File(["test"], "test.txt", {
-        type: "text/plain",
+      const submitButton = screen.getByText("Upload & Process");
+
+
+      expect(submitButton).toBeDisabled();
+
+
+      fireEvent.click(submitButton);
+
+
+      expect(submitButton).toBeDisabled();
+    });
+
+    test("includes authorization token in upload request", async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          reportId: "123",
+        },
+      };
+
+      axios.post.mockResolvedValue(mockResponse);
+
+      renderWithRouter(<UploadPage />);
+
+      const file = new File(["<xml>test</xml>"], "test.xml", {
+        type: "text/xml",
       });
       const input = screen.getByLabelText(/Drag & Drop XML file here/i, {
         selector: "input",
       });
-      fireEvent.change(input, { target: { files: [invalidFile] } });
 
-      expect(
-        screen.getByText(/Please select a valid XML file/i)
-      ).toBeInTheDocument();
+      fireEvent.change(input, { target: { files: [file] } });
 
-      // Select valid file
-      const validFile = new File(["<xml>test</xml>"], "test.xml", {
-        type: "text/xml",
+      const submitButton = screen.getByText("Upload & Process");
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(axios.post).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.any(FormData),
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              Authorization: "Bearer mock-token",
+            }),
+          })
+        );
       });
-      fireEvent.change(input, { target: { files: [validFile] } });
-
-      expect(
-        screen.queryByText(/Please select a valid XML file/i)
-      ).not.toBeInTheDocument();
     });
   });
 });

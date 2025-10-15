@@ -41,7 +41,7 @@
 
 .report-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(102,126,234,0.2);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
 
@@ -236,7 +236,7 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* Body */
+
 .modal-body {
   text-align: left;
   padding: 0.5rem 0 1rem;
@@ -267,7 +267,7 @@
   font-weight: 600;
 }
 
-/* Footer */
+
 .modal-footer {
   display: flex;
   justify-content: flex-end;
@@ -311,7 +311,7 @@
   box-shadow: 0 3px 15px rgba(239, 68, 68, 0.3);
 }
 
-/* Animations */
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }

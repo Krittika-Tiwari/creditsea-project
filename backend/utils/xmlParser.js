@@ -1,7 +1,7 @@
 const xml2js = require("xml2js");
 const fs = require("fs").promises;
 
-// Helper function to safely extract text from XML nodes
+
 const getText = (obj, path) => {
   const keys = path.split(".");
   let current = obj;
@@ -49,7 +49,7 @@ const parseXML = async (filePath) => {
       ),
     };
 
-    // Extract accounts
+
     const accounts = report.Accounts?.[0]?.Account || report.Account || [];
 
     const creditAccounts = [];
@@ -74,14 +74,14 @@ const parseXML = async (filePath) => {
         getText(acc, "AmountOverdue.0") || getText(acc, "Overdue.0") || 0
       );
 
-      // Count active/closed
+
       if (status.toLowerCase().includes("active") || status === "11") {
         activeCount++;
       } else if (status.toLowerCase().includes("closed")) {
         closedCount++;
       }
 
-      // Categorize secured/unsecured
+
       const securedTypes = ["auto loan", "home loan", "mortgage", "secured"];
       const isSecured = securedTypes.some((type) =>
         accountType.toLowerCase().includes(type)
@@ -95,7 +95,7 @@ const parseXML = async (filePath) => {
 
       totalBalance += balance;
 
-      // Extract address
+
       const address =
         getText(acc, "Address.0") || getText(acc, "Subscriber.0.Address.0");
       if (address) addressSet.add(address);
@@ -115,7 +115,7 @@ const parseXML = async (filePath) => {
       });
     });
 
-    // Extract enquiries
+
     const enquiries = report.Enquiries?.[0]?.Enquiry || report.Enquiry || [];
     const recentEnquiries = enquiries.filter((enq) => {
       const dateStr = getText(enq, "Date.0");
@@ -126,7 +126,7 @@ const parseXML = async (filePath) => {
       return enquiryDate >= sevenDaysAgo;
     });
 
-    // Report Summary
+
     const reportSummary = {
       totalAccounts: accounts.length,
       activeAccounts: activeCount,

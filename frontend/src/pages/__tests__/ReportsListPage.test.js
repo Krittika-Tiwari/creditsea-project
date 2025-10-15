@@ -7,15 +7,22 @@ import ReportsListPage from "../ReportsListPage";
 
 jest.mock("axios");
 
-const mockNavigate = jest.fn();
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
-  useNavigate: () => mockNavigate,
   Link: ({ to, children, ...props }) => (
     <a href={to} {...props}>
       {children}
     </a>
   ),
+}));
+
+
+jest.mock("@clerk/clerk-react", () => ({
+  useAuth: () => ({
+    getToken: jest.fn(() => Promise.resolve("mock-token")),
+    isSignedIn: true,
+    userId: "user_test123",
+  }),
 }));
 
 const renderWithRouter = (component) => {
@@ -50,8 +57,7 @@ describe("ReportsListPage Component Tests", () => {
 
   describe("Loading State", () => {
     test("shows loading spinner while fetching reports", () => {
-      axios.get.mockImplementation(() => new Promise(() => {})); // Never resolves
-
+      axios.get.mockImplementation(() => new Promise(() => {})); 
       renderWithRouter(<ReportsListPage />);
 
       expect(screen.getByText(/Loading reports/i)).toBeInTheDocument();
@@ -184,19 +190,17 @@ describe("ReportsListPage Component Tests", () => {
         expect(screen.getByText("John Doe")).toBeInTheDocument();
       });
 
-      // Click delete button
+
       const deleteButtons = screen.getAllByText("Delete");
       fireEvent.click(deleteButtons[0]);
 
-      // Modal should appear
+
       await waitFor(() => {
-        expect(screen.getByText("Delete Report")).toBeInTheDocument();
+        expect(screen.getByText(/Confirm Deletion/i)).toBeInTheDocument();
         expect(
-          screen.getByText("Are you sure you want to delete this report?")
+          screen.getByText(/delete this report permanently/i)
         ).toBeInTheDocument();
-        expect(
-          screen.getByText("This action cannot be undone.")
-        ).toBeInTheDocument();
+        expect(screen.getByText(/cannot be undone/i)).toBeInTheDocument();
       });
     });
 
@@ -214,14 +218,14 @@ describe("ReportsListPage Component Tests", () => {
         expect(screen.getByText("John Doe")).toBeInTheDocument();
       });
 
-      // Click delete button for first report
+
       const deleteButtons = screen.getAllByText("Delete");
       fireEvent.click(deleteButtons[0]);
 
-      // Modal should show John Doe's name
+
       await waitFor(() => {
         const nameElements = screen.getAllByText("John Doe");
-        expect(nameElements.length).toBeGreaterThan(1); // One in card, one in modal
+        expect(nameElements.length).toBeGreaterThan(1);
       });
     });
 
@@ -239,21 +243,21 @@ describe("ReportsListPage Component Tests", () => {
         expect(screen.getByText("John Doe")).toBeInTheDocument();
       });
 
-      // Open modal
+
       const deleteButtons = screen.getAllByText("Delete");
       fireEvent.click(deleteButtons[0]);
 
       await waitFor(() => {
-        expect(screen.getByText("Delete Report")).toBeInTheDocument();
+        expect(screen.getByText(/Confirm Deletion/i)).toBeInTheDocument();
       });
 
-      // Click cancel
+
       const cancelButton = screen.getByText("Cancel");
       fireEvent.click(cancelButton);
 
-      // Modal should close
+
       await waitFor(() => {
-        expect(screen.queryByText("Delete Report")).not.toBeInTheDocument();
+        expect(screen.queryByText(/Confirm Deletion/i)).not.toBeInTheDocument();
       });
     });
 
@@ -271,21 +275,20 @@ describe("ReportsListPage Component Tests", () => {
         expect(screen.getByText("John Doe")).toBeInTheDocument();
       });
 
-      // Open modal
       const deleteButtons = screen.getAllByText("Delete");
       fireEvent.click(deleteButtons[0]);
 
       await waitFor(() => {
-        expect(screen.getByText("Delete Report")).toBeInTheDocument();
+        expect(screen.getByText(/Confirm Deletion/i)).toBeInTheDocument();
       });
 
-      // Click overlay (parent of modal-content)
+
       const overlay = document.querySelector(".modal-overlay");
       fireEvent.click(overlay);
 
-      // Modal should close
+
       await waitFor(() => {
-        expect(screen.queryByText("Delete Report")).not.toBeInTheDocument();
+        expect(screen.queryByText(/Confirm Deletion/i)).not.toBeInTheDocument();
       });
     });
 
@@ -309,30 +312,35 @@ describe("ReportsListPage Component Tests", () => {
         expect(screen.getByText("John Doe")).toBeInTheDocument();
       });
 
-      // Open modal
+
       const deleteButtons = screen.getAllByText("Delete");
       fireEvent.click(deleteButtons[0]);
 
       await waitFor(() => {
-        expect(screen.getByText("Delete Report")).toBeInTheDocument();
+        expect(screen.getByText(/Confirm Deletion/i)).toBeInTheDocument();
       });
 
-      // Confirm delete - get the button inside the modal
+
       const confirmButton = document.querySelector(".confirm-delete-btn");
       fireEvent.click(confirmButton);
 
       await waitFor(() => {
         expect(axios.delete).toHaveBeenCalledWith(
-          expect.stringContaining("/api/reports/1")
+          expect.stringContaining("/api/reports/1"),
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              Authorization: "Bearer mock-token",
+            }),
+          })
         );
       });
 
-      // John Doe should be removed from the list
+
       await waitFor(() => {
         expect(screen.queryByText("John Doe")).not.toBeInTheDocument();
       });
 
-      // Jane Smith should still be there
+
       expect(screen.getByText("Jane Smith")).toBeInTheDocument();
     });
 
@@ -352,19 +360,19 @@ describe("ReportsListPage Component Tests", () => {
         expect(screen.getByText("John Doe")).toBeInTheDocument();
       });
 
-      // Open modal
+
       const deleteButtons = screen.getAllByText("Delete");
       fireEvent.click(deleteButtons[0]);
 
       await waitFor(() => {
-        expect(screen.getByText("Delete Report")).toBeInTheDocument();
+        expect(screen.getByText(/Confirm Deletion/i)).toBeInTheDocument();
       });
 
-      // Confirm delete - get the button inside the modal
+
       const confirmButton = document.querySelector(".confirm-delete-btn");
       fireEvent.click(confirmButton);
 
-      // Should show error in the component
+
       await waitFor(() => {
         expect(
           screen.getByText(/Failed to delete report/i)
@@ -393,19 +401,19 @@ describe("ReportsListPage Component Tests", () => {
         expect(screen.getByText("John Doe")).toBeInTheDocument();
       });
 
-      // Open modal
+
       const deleteButtons = screen.getAllByText("Delete");
       fireEvent.click(deleteButtons[0]);
 
       await waitFor(() => {
-        expect(screen.getByText("Delete Report")).toBeInTheDocument();
+        expect(screen.getByText(/Confirm Deletion/i)).toBeInTheDocument();
       });
 
-      // Confirm delete - get the button inside the modal
+
       const confirmButton = document.querySelector(".confirm-delete-btn");
       fireEvent.click(confirmButton);
 
-      // Should show "Deleting..." text
+
       await waitFor(() => {
         expect(screen.getByText("Deleting...")).toBeInTheDocument();
       });
@@ -420,6 +428,30 @@ describe("ReportsListPage Component Tests", () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Failed to load reports/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("Authorization", () => {
+    test("includes authorization token in API request", async () => {
+      axios.get.mockResolvedValue({
+        data: {
+          success: true,
+          data: mockReports,
+        },
+      });
+
+      renderWithRouter(<ReportsListPage />);
+
+      await waitFor(() => {
+        expect(axios.get).toHaveBeenCalledWith(
+          expect.stringContaining("/api/reports"),
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              Authorization: "Bearer mock-token",
+            }),
+          })
+        );
       });
     });
   });

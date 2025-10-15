@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./UploadPage.css";
+import { useAuth } from "@clerk/clerk-react";
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 function UploadPage() {
   const [file, setFile] = useState(null);
@@ -9,6 +10,7 @@ function UploadPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const navigate = useNavigate();
+  const { getToken } = useAuth();
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -56,16 +58,18 @@ function UploadPage() {
     formData.append("xmlFile", file);
 
     try {
+      const token = await getToken();
       const response = await axios.post(`${API_BASE}/api/upload`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
         },
       });
 
       setSuccess("File uploaded successfully!");
       setFile(null);
 
-      // Redirect to report detail page after 1.5 seconds
+
       setTimeout(() => {
         navigate(`/reports/${response.data.reportId}`);
       }, 1500);

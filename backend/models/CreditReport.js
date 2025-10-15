@@ -12,7 +12,11 @@ const creditAccountSchema = new mongoose.Schema({
 
 const creditReportSchema = new mongoose.Schema(
   {
-    // Basic Details
+    userId: {
+      type: String,
+      required: true,
+      index: true,
+    },
     basicDetails: {
       name: String,
       mobilePhone: String,
@@ -20,7 +24,6 @@ const creditReportSchema = new mongoose.Schema(
       creditScore: Number,
     },
 
-    // Report Summary
     reportSummary: {
       totalAccounts: Number,
       activeAccounts: Number,
@@ -31,13 +34,10 @@ const creditReportSchema = new mongoose.Schema(
       last7DaysEnquiries: Number,
     },
 
-    // Credit Accounts
     creditAccounts: [creditAccountSchema],
 
-    // Addresses
     addresses: [String],
 
-    // Metadata
     uploadedAt: {
       type: Date,
       default: Date.now,

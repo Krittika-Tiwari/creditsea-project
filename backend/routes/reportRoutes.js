@@ -1,12 +1,14 @@
 const express = require("express");
 const CreditReport = require("../models/CreditReport");
+const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
-// GET /api/reports - Get all credit reports
+router.use(requireAuth);
+
 router.get("/", async (req, res) => {
   try {
-    const reports = await CreditReport.find()
+    const reports = await CreditReport.find({ userId: req.userId })
       .sort({ createdAt: -1 })
       .select(
         "basicDetails.name basicDetails.creditScore fileName uploadedAt _id"
@@ -18,7 +20,7 @@ router.get("/", async (req, res) => {
       data: reports,
     });
   } catch (error) {
-    console.error("❌ Error fetching reports:", error);
+    console.error(" Error fetching reports:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch reports",
@@ -26,10 +28,12 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET /api/reports/:id - Get specific credit report
 router.get("/:id", async (req, res) => {
   try {
-    const report = await CreditReport.findById(req.params.id);
+    const report = await CreditReport.findOne({
+      _id: req.params.id,
+      userId: req.userId,
+    });
 
     if (!report) {
       return res.status(404).json({
@@ -43,7 +47,7 @@ router.get("/:id", async (req, res) => {
       data: report,
     });
   } catch (error) {
-    console.error("❌ Error fetching report:", error);
+    console.error("Error fetching report:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch report",
@@ -51,10 +55,12 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/reports/:id - Delete credit report
 router.delete("/:id", async (req, res) => {
   try {
-    const report = await CreditReport.findByIdAndDelete(req.params.id);
+    const report = await CreditReport.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.userId,
+    });
 
     if (!report) {
       return res.status(404).json({
@@ -68,7 +74,7 @@ router.delete("/:id", async (req, res) => {
       message: "Credit report deleted successfully",
     });
   } catch (error) {
-    console.error("❌ Error deleting report:", error);
+    console.error(" Error deleting report:", error);
     res.status(500).json({
       success: false,
       message: "Failed to delete report",

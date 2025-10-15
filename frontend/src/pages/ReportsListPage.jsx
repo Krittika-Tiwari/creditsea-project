@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import "./ReportsListPage.css";
+import { useAuth } from "@clerk/clerk-react";
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 function ReportsListPage() {
@@ -15,17 +16,24 @@ function ReportsListPage() {
   });
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const { getToken } = useAuth();
+
   useEffect(() => {
     fetchReports();
   }, []);
 
   const fetchReports = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/reports`);
+      const token = await getToken();
+      const response = await axios.get(`${API_BASE}/api/reports`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       setReports(response.data.data);
       setLoading(false);
     } catch (err) {
-      console.error("❌ Error fetching reports:", err);
+      console.error(" Error fetching reports:", err);
       setError("Failed to load reports");
       setLoading(false);
     }
@@ -42,7 +50,12 @@ function ReportsListPage() {
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await axios.delete(`${API_BASE}/api/reports/${deleteModal.reportId}`);
+      const token = await getToken();
+      await axios.delete(`${API_BASE}/api/reports/${deleteModal.reportId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       setReports(
         reports.filter((report) => report._id !== deleteModal.reportId)
       );

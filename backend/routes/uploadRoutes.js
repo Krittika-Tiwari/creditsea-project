@@ -4,10 +4,11 @@ const path = require("path");
 const fs = require("fs").promises;
 const CreditReport = require("../models/CreditReport");
 const { parseXML } = require("../utils/xmlParser");
+const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
-// Configure Multer for file uploads
+
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
     const uploadDir = path.join(__dirname, "../uploads");
@@ -35,13 +36,12 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-// POST /api/upload - Upload and process XML file
-router.post("/", upload.single("xmlFile"), async (req, res) => {
-    try {
-      console.log("📥 Received upload request");
+
+router.post("/", requireAuth, upload.single("xmlFile"), async (req, res) => {
+  try {
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -49,23 +49,29 @@ router.post("/", upload.single("xmlFile"), async (req, res) => {
       });
     }
 
-    console.log("📤 Processing file:", req.file.originalname);
+    console.log(
+      "Processing file:",
+      req.file.originalname,
+      "for user:",
+      req.userId
+    );
 
-    // Parse XML file
+
     const parsedData = await parseXML(req.file.path);
 
-    // Save to MongoDB
+
     const creditReport = new CreditReport({
       ...parsedData,
+      userId: req.userId, 
       fileName: req.file.originalname,
     });
 
     await creditReport.save();
 
-    // Clean up uploaded file
+
     await fs.unlink(req.file.path);
 
-    console.log("✅ Credit report saved:", creditReport._id);
+    console.log("Credit report saved:", creditReport._id);
 
     res.status(201).json({
       success: true,
@@ -74,9 +80,8 @@ router.post("/", upload.single("xmlFile"), async (req, res) => {
       data: creditReport,
     });
   } catch (error) {
-    console.error("❌ Upload Error:", error);
+    console.error("Upload Error:", error);
 
-    // Clean up file if it exists
     if (req.file) {
       try {
         await fs.unlink(req.file.path);

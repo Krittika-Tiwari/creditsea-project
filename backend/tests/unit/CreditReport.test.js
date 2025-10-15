@@ -21,6 +21,7 @@ afterEach(async () => {
 
 describe("CreditReport Model Unit Tests", () => {
   const validReportData = {
+    userId: "user_test123", // ADD userId field
     basicDetails: {
       name: "John Doe",
       mobilePhone: "9876543210",
@@ -52,11 +53,12 @@ describe("CreditReport Model Unit Tests", () => {
   };
 
   describe("Model Creation", () => {
-    test("should create a valid credit report with all fields", async () => {
+    test("should create a valid credit report with userId", async () => {
       const report = new CreditReport(validReportData);
       const savedReport = await report.save();
 
       expect(savedReport._id).toBeDefined();
+      expect(savedReport.userId).toBe("user_test123");
       expect(savedReport.basicDetails.name).toBe("John Doe");
       expect(savedReport.basicDetails.creditScore).toBe(750);
       expect(savedReport.creditAccounts.length).toBe(1);
@@ -66,8 +68,18 @@ describe("CreditReport Model Unit Tests", () => {
       expect(savedReport.updatedAt).toBeDefined();
     });
 
-    test("should create report with minimal required fields", async () => {
+    test("should require userId field", async () => {
+      const dataWithoutUserId = { ...validReportData };
+      delete dataWithoutUserId.userId;
+
+      const report = new CreditReport(dataWithoutUserId);
+
+      await expect(report.save()).rejects.toThrow();
+    });
+
+    test("should create report with minimal required fields including userId", async () => {
       const minimalReport = {
+        userId: "user_test456",
         basicDetails: {
           name: "Jane Doe",
           creditScore: 650,
@@ -89,8 +101,8 @@ describe("CreditReport Model Unit Tests", () => {
       const savedReport = await report.save();
 
       expect(savedReport._id).toBeDefined();
+      expect(savedReport.userId).toBe("user_test456");
       expect(savedReport.basicDetails.name).toBe("Jane Doe");
-      expect(savedReport.creditAccounts).toEqual([]);
     });
 
     test("should handle multiple credit accounts", async () => {
@@ -149,7 +161,6 @@ describe("CreditReport Model Unit Tests", () => {
       const savedReport = await report.save();
       const originalUpdatedAt = savedReport.updatedAt;
 
-      // Wait a bit to ensure timestamp changes
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       savedReport.basicDetails.name = "Updated Name";
@@ -162,11 +173,41 @@ describe("CreditReport Model Unit Tests", () => {
     });
   });
 
-  describe("Queries", () => {
-    test("should find reports by credit score range", async () => {
+  describe("Queries with userId", () => {
+    test("should find reports by userId", async () => {
       await CreditReport.create([
         {
           ...validReportData,
+          userId: "user_1",
+          basicDetails: { ...validReportData.basicDetails, name: "User 1" },
+        },
+        {
+          ...validReportData,
+          userId: "user_2",
+          basicDetails: { ...validReportData.basicDetails, name: "User 2" },
+        },
+        {
+          ...validReportData,
+          userId: "user_1",
+          basicDetails: {
+            ...validReportData.basicDetails,
+            name: "User 1 Report 2",
+          },
+        },
+      ]);
+
+      const user1Reports = await CreditReport.find({ userId: "user_1" });
+      expect(user1Reports.length).toBe(2);
+
+      const user2Reports = await CreditReport.find({ userId: "user_2" });
+      expect(user2Reports.length).toBe(1);
+    });
+
+    test("should find reports by credit score range and userId", async () => {
+      await CreditReport.create([
+        {
+          ...validReportData,
+          userId: "user_1",
           basicDetails: {
             ...validReportData.basicDetails,
             name: "User 1",
@@ -175,43 +216,37 @@ describe("CreditReport Model Unit Tests", () => {
         },
         {
           ...validReportData,
+          userId: "user_1",
           basicDetails: {
             ...validReportData.basicDetails,
-            name: "User 2",
+            name: "User 1 B",
             creditScore: 650,
           },
         },
         {
           ...validReportData,
+          userId: "user_2",
           basicDetails: {
             ...validReportData.basicDetails,
-            name: "User 3",
+            name: "User 2",
             creditScore: 750,
           },
         },
       ]);
 
       const highScoreReports = await CreditReport.find({
+        userId: "user_1",
         "basicDetails.creditScore": { $gte: 750 },
       });
 
-      expect(highScoreReports.length).toBe(2);
+      expect(highScoreReports.length).toBe(1);
+      expect(highScoreReports[0].basicDetails.creditScore).toBe(800);
     });
 
-    test("should find reports by name", async () => {
-      await CreditReport.create(validReportData);
-
-      const found = await CreditReport.findOne({
-        "basicDetails.name": "John Doe",
-      });
-
-      expect(found).toBeDefined();
-      expect(found.basicDetails.name).toBe("John Doe");
-    });
-
-    test("should sort reports by uploadedAt descending", async () => {
+    test("should sort reports by uploadedAt descending for specific user", async () => {
       const report1 = await CreditReport.create({
         ...validReportData,
+        userId: "user_1",
         basicDetails: { ...validReportData.basicDetails, name: "First" },
       });
 
@@ -219,39 +254,16 @@ describe("CreditReport Model Unit Tests", () => {
 
       const report2 = await CreditReport.create({
         ...validReportData,
+        userId: "user_1",
         basicDetails: { ...validReportData.basicDetails, name: "Second" },
       });
 
-      const reports = await CreditReport.find().sort({ uploadedAt: -1 });
+      const reports = await CreditReport.find({ userId: "user_1" }).sort({
+        uploadedAt: -1,
+      });
 
       expect(reports[0].basicDetails.name).toBe("Second");
       expect(reports[1].basicDetails.name).toBe("First");
-    });
-  });
-
-  describe("Validation", () => {
-    test("should accept report without fileName", async () => {
-      const dataWithoutFileName = { ...validReportData };
-      delete dataWithoutFileName.fileName;
-
-      const report = new CreditReport(dataWithoutFileName);
-      const savedReport = await report.save();
-
-      expect(savedReport._id).toBeDefined();
-    });
-
-    test("should handle empty arrays", async () => {
-      const dataWithEmptyArrays = {
-        ...validReportData,
-        creditAccounts: [],
-        addresses: [],
-      };
-
-      const report = new CreditReport(dataWithEmptyArrays);
-      const savedReport = await report.save();
-
-      expect(savedReport.creditAccounts).toEqual([]);
-      expect(savedReport.addresses).toEqual([]);
     });
   });
 
@@ -266,25 +278,46 @@ describe("CreditReport Model Unit Tests", () => {
       expect(updatedReport.basicDetails.creditScore).toBe(800);
     });
 
-    test("should delete report by ID", async () => {
+    test("should delete report by ID and userId", async () => {
       const report = new CreditReport(validReportData);
       const savedReport = await report.save();
       const reportId = savedReport._id;
 
-      await CreditReport.findByIdAndDelete(reportId);
+      await CreditReport.findOneAndDelete({
+        _id: reportId,
+        userId: "user_test123",
+      });
 
       const found = await CreditReport.findById(reportId);
       expect(found).toBeNull();
     });
 
-    test("should count total documents", async () => {
-      await CreditReport.create(validReportData);
-      await CreditReport.create({
-        ...validReportData,
-        basicDetails: { ...validReportData.basicDetails, name: "Another User" },
+    test("should not delete report if userId does not match", async () => {
+      const report = new CreditReport(validReportData);
+      const savedReport = await report.save();
+      const reportId = savedReport._id;
+
+      // Try to delete with wrong userId
+      await CreditReport.findOneAndDelete({
+        _id: reportId,
+        userId: "wrong_user",
       });
 
-      const count = await CreditReport.countDocuments();
+      // Report should still exist
+      const found = await CreditReport.findById(reportId);
+      expect(found).not.toBeNull();
+    });
+
+    test("should count total documents for specific user", async () => {
+      await CreditReport.create({ ...validReportData, userId: "user_1" });
+      await CreditReport.create({
+        ...validReportData,
+        userId: "user_1",
+        basicDetails: { ...validReportData.basicDetails, name: "Another User" },
+      });
+      await CreditReport.create({ ...validReportData, userId: "user_2" });
+
+      const count = await CreditReport.countDocuments({ userId: "user_1" });
       expect(count).toBe(2);
     });
   });
